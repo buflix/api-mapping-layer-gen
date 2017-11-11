@@ -1,0 +1,11 @@
+{
+    "name": "cyberrebell/api-mapping-layer-gen",
+    "description": "The library to generate the mapping layer for your API",
+    "type": "library",
+    "license": "MIT",
+    "require": {
+        "php": "^7.1",
+        "zendframework/zend-code": "^3.3",
+        "symfony/yaml": "^3.3"
+    }
+}
