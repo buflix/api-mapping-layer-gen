@@ -4,7 +4,10 @@
 
 ## Purpose 
 
-> todo
+Library to generate an mapping interface based on an given API definition.
+
+Useful for the initial setup of a new consumer application that needs to handle an format mapping
+of an already existing API / or an service that shall implement an API based on a definition. 
 
 ## Supported input definitions
 
