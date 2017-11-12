@@ -46,6 +46,9 @@ class Mapper implements MapperInterface
     {
         if ($definition['type'] === 'object') {
             if ($isEntity) {
+                if (isset($definition['$ref'])) {
+                    $name = substr($definition['$ref'], strrpos($definition['$ref'], '/') + 1);
+                }
                 $pattern = new EntityPattern();
                 $pattern->setName($name);
                 foreach ($definition['properties'] ?? [] as $propertyName => $propertyDef) {
@@ -54,9 +57,11 @@ class Mapper implements MapperInterface
                 }
             } else {
                 $pattern = new AssocPattern();
+                $pattern->setName($name);
             }
         } elseif ($definition['type'] === 'array') {
             $pattern = new ArrayPattern();
+            $pattern->setName($name);
         } else {
             $pattern = new PropertyPattern();
             $pattern->setName($name);

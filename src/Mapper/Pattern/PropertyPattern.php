@@ -44,4 +44,14 @@ class PropertyPattern
     {
         return $this->type;
     }
+
+    public function getUpperCamelCaseName() : string
+    {
+        return str_replace(['-', '_'], '', ucwords($this->name, '-_'));
+    }
+
+    public function getLowerCamelCaseName() : string
+    {
+        return lcfirst($this->getUpperCamelCaseName());
+    }
 }
