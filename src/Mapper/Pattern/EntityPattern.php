@@ -6,9 +6,29 @@ class EntityPattern extends PropertyPattern
 {
     protected $type = 'object';
     /**
+     * @var string
+     */
+    protected $className;
+    /**
      * @var array
      */
     protected $properties = [];
+
+    /**
+     * @param string $className
+     */
+    public function setClassName(string $className)
+    {
+        $this->className = $className;
+    }
+
+    /**
+     * @return string
+     */
+    public function getClassName() : string
+    {
+        return $this->className;
+    }
 
     public function addProperty(PropertyPattern $property)
     {

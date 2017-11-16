@@ -15,6 +15,9 @@ class AllOfResolver
                 }
                 unset($definition[$key]);
                 $definition = array_replace_recursive($definition, $mergeResult);
+                if (isset($definition['$ref'])) {
+                    unset($definition['$ref']);
+                }
             } elseif (is_array($definition[$key])) {
                 $definition[$key] = $this->resolveKeywordAllOf($subDef);
             }

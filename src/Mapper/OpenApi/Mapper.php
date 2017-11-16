@@ -46,11 +46,12 @@ class Mapper implements MapperInterface
     {
         if ($definition['type'] === 'object') {
             if ($isEntity) {
-                if (isset($definition['$ref'])) {
-                    $name = substr($definition['$ref'], strrpos($definition['$ref'], '/') + 1);
-                }
                 $pattern = new EntityPattern();
                 $pattern->setName($name);
+                if (isset($definition['$ref'])) {
+                    $className = substr($definition['$ref'], strrpos($definition['$ref'], '/') + 1);
+                    $pattern->setClassName($className);
+                }
                 foreach ($definition['properties'] ?? [] as $propertyName => $propertyDef) {
                     $propertyPattern = $this->createDefinitionPattern($propertyName, $propertyDef, isset($propertyDef['$ref']));
                     $pattern->addProperty($propertyPattern);

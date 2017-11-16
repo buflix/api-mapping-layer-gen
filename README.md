@@ -9,7 +9,7 @@ The library to generate the mapping layer for your API
 ## Supported output formats
 * PHP
     * Native
-        * produces "GeneratedEntites" which contains all generated funktionality
+        * produces "GeneratedEntites" which contains all generated functionality
         * produces "Entities" which extends the GeneratedEntites and can be modified with custom functionalitiy
         * uses native php arrays rather than collection classes
 
