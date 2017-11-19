@@ -9,7 +9,7 @@ use Zend\Code\Generator\ClassGenerator;
 use Zend\Code\Generator\MethodGenerator;
 use Zend\Code\Generator\PropertyGenerator;
 
-class Native extends AbstractEntityGenerator implements EntityGeneratorInterface
+class Plain extends AbstractEntityGenerator implements EntityGeneratorInterface
 {
     public function processPatterns(array $patterns, string $targetNamespace)
     {
