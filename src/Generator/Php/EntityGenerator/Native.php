@@ -27,7 +27,9 @@ class Native extends AbstractEntityGenerator implements EntityGeneratorInterface
                 $generatedEntityGenerator->setName($className);
                 $generatedEntityGenerator->setNamespaceName($targetNamespace . '\\' . self::NAMESPACE_GENERATED_ENTITIES);
                 $generatedEntityGenerator->addFlag(ClassGenerator::FLAG_ABSTRACT);
-                $generatedEntityGenerator->setExtendedClass(self::ABSTRACT_ENTITY_NAME);
+                $generatedEntityGenerator->setExtendedClass(
+                    $targetNamespace . '\\' . self::NAMESPACE_GENERATED_ENTITIES . '\\' . self::ABSTRACT_ENTITY_NAME
+                );
                 /* @var $property PropertyPattern */
                 foreach ($pattern->getProperties() as $property) {
                     $type = TypesMapper::mapType($property->getType());
@@ -89,49 +91,35 @@ class Native extends AbstractEntityGenerator implements EntityGeneratorInterface
     protected function createPopulationCall(PropertyPattern $pattern, int $variablesSuffix = 1)
     {
         $value = $this->createPopulationCallValue($pattern);
-        if ($pattern instanceof ArrayPattern) {
-            $loopCollectionName = 'collection' . $variablesSuffix;
-            $loopIteratorName = 'collectionItem' . $variablesSuffix;
-
-            $subPattern = $pattern->getContentProperty();
-            if ($subPattern instanceof ArrayPattern || $subPattern instanceof AssocPattern) {
-                $subPopulationCall = $this->createPopulationCall($subPattern, $variablesSuffix + 1);
+        if ($pattern instanceof ArrayPattern || $pattern instanceof AssocPattern) {
+            $innerPattern = $this->getInnerPattern($pattern);
+            if ($innerPattern instanceof EntityPattern) {
+                $targetClass = '\\' . $this->entitiesNamespace . '\\' . $innerPattern->getClassName();
+                $inLoopBeforeValue = 'new ' . $targetClass . '(';
+                $inLoopBehindValue = ' ?? [])';
             } else {
-                $subPopulationCall = $this->createPopulationCallValue($subPattern);
+                $inLoopBeforeValue = '';
+                $inLoopBehindValue = ' ?? null';
             }
 
-            $contentPropertyCallValue = str_replace(
-                '$data[\'items\']',
-                '$' . $loopIteratorName,
-                $subPopulationCall
+            return $this->createRecursiveArrayLoop(
+                $pattern,
+                '$data[\'' . $pattern->getLowerCamelCaseName() . '\'] ?? []',
+                $inLoopBeforeValue,
+                $inLoopBehindValue,
+                true
             );
-
-            $lines = [];
-            foreach (explode("\n", $contentPropertyCallValue) as $line) {
-                $lines[] = '    ' . $line;
-            }
-
-            end($lines);
-            $lastElementKey = key($lines);
-            $lastLineValue = substr($lines[$lastElementKey], 4);
-            if (count($lines) > 1) {
-                if (substr($lastLineValue, 0, 16) === '$this->setItems(') {
-                    $lastLineValue = substr($lastLineValue, 16, strlen($lastLineValue) - 18);
-                }
-            }
-            $lines[$lastElementKey] = '    $' . $loopCollectionName . '[] = ' . $lastLineValue . ';';
-
-            $populationCall = '$' . $loopCollectionName . ' = [];' . "\n";
-            $populationCall .= 'foreach (' . $value . ' as $' . $loopIteratorName . ') {' . "\n";
-            $populationCall .= implode("\n", $lines) . "\n";
-            $populationCall .= '}' . "\n";
-            $populationCall .= '$this->set' . $pattern->getUpperCamelCaseName() . '($' . $loopCollectionName . ');';
-            return $populationCall;
-        } elseif ($pattern instanceof AssocPattern) {
-
         } else {
             return '$this->set' . $pattern->getUpperCamelCaseName() . '(' . $value . ');';
         }
+    }
+
+    protected function getInnerPattern(PropertyPattern $pattern)
+    {
+        while($pattern instanceof ArrayPattern || $pattern instanceof AssocPattern) {
+            $pattern = $pattern->getContentProperty();
+        }
+        return $pattern;
     }
 
     protected function createPopulationCallValue(PropertyPattern $pattern) : string
@@ -172,24 +160,87 @@ class Native extends AbstractEntityGenerator implements EntityGeneratorInterface
 
     protected function createToArrayBody(array $properties) : string
     {
+        $preparationCalls = '';
         $toArrayComponents = [];
         /* @var $pattern PropertyPattern */
         foreach ($properties as $pattern) {
+            if ($pattern instanceof ArrayPattern || $pattern instanceof AssocPattern) {
+                $preparationCall = $this->createRecursiveArrayLoop(
+                    $pattern,
+                    '$this->get' . $pattern->getUpperCamelCaseName() . '() ?? []',
+                    '',
+                    '->toArray()',
+                    false
+                );
+                $preparationCalls .= $preparationCall . "\n";
+            }
+
             $toArrayComponents[] = '    \'' . $pattern->getName() . '\' => ' . $this->createToArrayCall($pattern);
         }
-        return 'return [' . "\n" . implode(",\n", $toArrayComponents) . "\n" . '];';
+        return $preparationCalls . 'return [' . "\n" . implode(",\n", $toArrayComponents) . "\n" . '];';
     }
 
     protected function createToArrayCall(PropertyPattern $pattern)
     {
-        if ($pattern instanceof ArrayPattern) {
-            return 'null';
-        } elseif ($pattern instanceof AssocPattern) {
-            return 'null';
+        if ($pattern instanceof ArrayPattern || $pattern instanceof AssocPattern) {
+            return '$' . $pattern->getName() . 'Collection1';
         } elseif ($pattern instanceof EntityPattern) {
             return '$this->get' . $pattern->getUpperCamelCaseName() . '()->toArray()';
         } else {
             return '$this->get' . $pattern->getUpperCamelCaseName() . '()';
+        }
+    }
+
+    protected function createRecursiveArrayLoop(
+        PropertyPattern $pattern,
+        string $loopArray,
+        string $inLoopBeforeValue,
+        string $inLoopBehindValue,
+        bool $setResult,
+        int $variablesSuffix = 1
+    )
+    {
+        if ($pattern instanceof ArrayPattern) {
+            $loopCollectionName = $pattern->getName() . 'Collection' . $variablesSuffix;
+            $loopIteratorName = $pattern->getName() . 'CollectionItem' . $variablesSuffix;
+
+            $subPattern = $pattern->getContentProperty();
+            if ($subPattern instanceof ArrayPattern || $subPattern instanceof AssocPattern) {
+                $subCall = $this->createRecursiveArrayLoop(
+                    $subPattern,
+                    '$' . $loopIteratorName,
+                    $inLoopBeforeValue,
+                    $inLoopBehindValue,
+                    $setResult,
+                    $variablesSuffix + 1
+                );
+            } else {
+                $subCall = $inLoopBeforeValue . '$' . $loopIteratorName . $inLoopBehindValue;
+            }
+
+            $lines = explode("\n", $subCall);
+            end($lines);
+            $lastElementKey = key($lines);
+            $lines[$lastElementKey] = '$' . $loopCollectionName . '[$key' . $variablesSuffix . '] = ' . $lines[$lastElementKey] . ';';
+
+            foreach ($lines as $key => $line) {
+                $lines[$key] = '    ' . $line;
+            }
+
+            $loopCall = '$' . $loopCollectionName . ' = [];' . "\n";
+            $loopCall .= 'foreach (' . $loopArray . ' as $key' . $variablesSuffix . ' => $' . $loopIteratorName . ') {' . "\n";
+            $loopCall .= implode("\n", $lines) . "\n";
+            $loopCall .= '}' . "\n";
+            if ($variablesSuffix > 1) {
+                $loopCall .= '$' . $loopCollectionName;
+            } elseif ($setResult) {
+                $loopCall .= '$this->set' . $pattern->getUpperCamelCaseName() . '($' . $loopCollectionName . ');';
+            }
+            return $loopCall;
+        } elseif ($pattern instanceof AssocPattern) {
+
+        } else {
+            return '$this->set' . $pattern->getUpperCamelCaseName() . '(' . $loopArray . ');';
         }
     }
 }

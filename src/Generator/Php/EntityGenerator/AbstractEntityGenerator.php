@@ -49,6 +49,19 @@ abstract class AbstractEntityGenerator implements EntityGeneratorInterface
         $generator->addFlag(ClassGenerator::FLAG_ABSTRACT);
         $generator->setImplementedInterfaces(['\JsonSerializable']);
 
+        //add __construct
+        $construct = new MethodGenerator();
+        $construct->setName('__construct');
+        $construct->setParameters([
+            [
+                'name' => 'data',
+                'type' => 'array',
+                'defaultvalue' => []
+            ]
+        ]);
+        $construct->setBody('$this->populate($data);');
+        $generator->addMethodFromGenerator($construct);
+
         //add populate
         $populate = new MethodGenerator();
         $populate->setName('populate');
@@ -77,24 +90,29 @@ abstract class AbstractEntityGenerator implements EntityGeneratorInterface
 
         //addDocblocks
         if ($this->addDocblockTypes || $this->addDocblockDescriptions) {
+            $constructDocblock = '';
             $populateDocblock = '';
             $toArrayDocblock = '';
             $jsonSerializeDocblock = '';
             if ($this->addDocblockDescriptions) {
+                $constructDocblock .= 'Create the entity using a population array';
                 $populateDocblock .= 'Populate the entity';
                 $toArrayDocblock .= 'Get entity data as array';
                 $jsonSerializeDocblock .= 'Provide entity data for json serialisation';
             }
             if ($this->addDocblockTypes) {
                 if (!empty($populateDocblock) && !empty($toArrayDocblock) && !empty($jsonSerializeDocblock)) {
+                    $constructDocblock .= "\n\n";
                     $populateDocblock .= "\n\n";
                     $toArrayDocblock .= "\n\n";
                     $jsonSerializeDocblock .= "\n\n";
                 }
+                $constructDocblock .= '@param array $data';
                 $populateDocblock .= '@param array $data';
                 $toArrayDocblock .= '@return array';
                 $jsonSerializeDocblock .= '@return array';
             }
+            $construct->setDocBlock($constructDocblock);
             $populate->setDocBlock($populateDocblock);
             $toArray->setDocBlock($toArrayDocblock);
             $jsonSerialize->setDocBlock($jsonSerializeDocblock);
@@ -126,7 +144,7 @@ abstract class AbstractEntityGenerator implements EntityGeneratorInterface
         $setter->setParameters([
             $property->getLowerCamelCaseName() => [
                 'name' => $property->getLowerCamelCaseName(),
-                'type' => $type
+                'type' => '?' . $type
             ]
         ]);
         $setter->setBody($this->createSetterBody($lowerName));
@@ -135,7 +153,7 @@ abstract class AbstractEntityGenerator implements EntityGeneratorInterface
         //add the getter
         $getter = new MethodGenerator();
         $getter->setName('get' . $upperName);
-        $getter->setReturnType($type);
+        $getter->setReturnType('?' . $type);
         $getter->setBody($this->createGetterBody($lowerName));
         $generator->addMethodFromGenerator($getter);
 
@@ -152,11 +170,11 @@ abstract class AbstractEntityGenerator implements EntityGeneratorInterface
                     $setterDocblock .= "\n\n";
                     $getterDocblock .= "\n\n";
                 }
-                $setterDocblock .= '@param ' . $type . ' $' . $lowerName;
+                $setterDocblock .= '@param null|' . $type . ' $' . $lowerName;
                 if ($this->useFluentSetters) {
                     $setterDocblock .= "\n" . '@return self';
                 }
-                $getterDocblock .= '@return ' . $type;
+                $getterDocblock .= '@return null|' . $type;
             }
             $setter->setDocBlock($setterDocblock);
             $getter->setDocBlock($getterDocblock);
