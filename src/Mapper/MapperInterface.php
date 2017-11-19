@@ -4,5 +4,11 @@ namespace ApiMappingLayerGen\Mapper;
 
 interface MapperInterface
 {
-    public function getPatterns() : array;
+	/**
+	 * Method to retrieve pattern definitions from an api definition
+	 * set during the processing of the definitions
+     *
+	 * @return array
+	 */
+    public function getPatterns(): array;
 }
