@@ -11,6 +11,7 @@ interface EntityGeneratorInterface
     /**
      * Method to process pattern defintions and create an entity
      * structure based on processed patterns
+     *
      * @param array $patterns
      * @param string $targetNamespace
      * @return null
@@ -19,6 +20,7 @@ interface EntityGeneratorInterface
 
     /**
      * Method to retrieve created mapping entity structure
+     *
      * @return array
      */
     public function getGeneratedEntities() : array;
@@ -26,6 +28,7 @@ interface EntityGeneratorInterface
     /**
      * Method to retrieve created entity structure of
      * entites for additional functionality
+     *
      * @return array
      */
     public function getEntities() : array;
