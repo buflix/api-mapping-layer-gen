@@ -46,11 +46,12 @@ class Mapper implements MapperInterface
     {
         if ($definition['type'] === 'object') {
             if ($isEntity) {
-                if (isset($definition['$ref'])) {
-                    $name = substr($definition['$ref'], strrpos($definition['$ref'], '/') + 1);
-                }
                 $pattern = new EntityPattern();
                 $pattern->setName($name);
+                if (isset($definition['$ref'])) {
+                    $className = substr($definition['$ref'], strrpos($definition['$ref'], '/') + 1);
+                    $pattern->setClassName($className);
+                }
                 foreach ($definition['properties'] ?? [] as $propertyName => $propertyDef) {
                     $propertyPattern = $this->createDefinitionPattern($propertyName, $propertyDef, isset($propertyDef['$ref']));
                     $pattern->addProperty($propertyPattern);
@@ -58,15 +59,19 @@ class Mapper implements MapperInterface
             } else {
                 $pattern = new AssocPattern();
                 $pattern->setName($name);
+                $itemPattern = $this->createDefinitionPattern('items', $definition['items'], isset($definition['items']['$ref']));
+                $pattern->setContentProperty($itemPattern);
             }
         } elseif ($definition['type'] === 'array') {
             $pattern = new ArrayPattern();
             $pattern->setName($name);
+            $itemPattern = $this->createDefinitionPattern('items', $definition['items'], isset($definition['items']['$ref']));
+            $pattern->setContentProperty($itemPattern);
         } else {
             $pattern = new PropertyPattern();
             $pattern->setName($name);
-            $pattern->setType($definition['type']);
         }
+        $pattern->setType($definition['type']);
         return $pattern;
     }
 }

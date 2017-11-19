@@ -3,16 +3,22 @@
 namespace ApiMappingLayerGen\Generator\Php\EntityGenerator;
 
 use ApiMappingLayerGen\Generator\Php\TypesMapper;
+use ApiMappingLayerGen\Mapper\Pattern\ArrayPattern;
+use ApiMappingLayerGen\Mapper\Pattern\AssocPattern;
 use ApiMappingLayerGen\Mapper\Pattern\EntityPattern;
 use ApiMappingLayerGen\Mapper\Pattern\PropertyPattern;
 use Zend\Code\Generator\ClassGenerator;
 use Zend\Code\Generator\MethodGenerator;
-use Zend\Code\Generator\PropertyGenerator;
 
 class Native extends AbstractEntityGenerator implements EntityGeneratorInterface
 {
+    protected $entitiesNamespace;
+
     public function processPatterns(array $patterns, string $targetNamespace)
     {
+        $this->entitiesNamespace = $targetNamespace . '\\' . self::NAMESPACE_ENTITIES;
+
+        $this->addAbstractGeneratedEntity($targetNamespace);
         /* @var $pattern PropertyPattern */
         foreach ($patterns as $pattern) {
             if ($pattern instanceof EntityPattern) {
@@ -21,92 +27,169 @@ class Native extends AbstractEntityGenerator implements EntityGeneratorInterface
                 $generatedEntityGenerator->setName($className);
                 $generatedEntityGenerator->setNamespaceName($targetNamespace . '\\' . self::NAMESPACE_GENERATED_ENTITIES);
                 $generatedEntityGenerator->addFlag(ClassGenerator::FLAG_ABSTRACT);
+                $generatedEntityGenerator->setExtendedClass(self::ABSTRACT_ENTITY_NAME);
                 /* @var $property PropertyPattern */
                 foreach ($pattern->getProperties() as $property) {
-                    $this->addProperty($generatedEntityGenerator, $property, $targetNamespace);
+                    $type = TypesMapper::mapType($property->getType());
+                    if ($property instanceof EntityPattern) {
+                        $type = '\\' . $this->entitiesNamespace . '\\' . $property->getClassName();
+                    }
+
+                    $this->addProperty($generatedEntityGenerator, $property, $type);
                 }
+                $generatedEntityGenerator->addMethodFromGenerator($this->createPopulate($pattern->getProperties()));
+                $generatedEntityGenerator->addMethodFromGenerator($this->createToArray($pattern->getProperties()));
                 $this->generatedEntities[$className] = "<?php\n\n" . $generatedEntityGenerator->generate();
 
-                $this->addChildEntity($generatedEntityGenerator, $pattern->getName(), $targetNamespace . '\\' . self::NAMESPACE_ENTITIES);
+                $this->addChildEntity($generatedEntityGenerator, $pattern->getName(), $this->entitiesNamespace);
             }
         }
     }
 
-    protected function addChildEntity(ClassGenerator $parentGenerator, string $name, string $namespace)
+    protected function createPopulate(array $properties) : MethodGenerator
     {
-        $entityGenerator = new ClassGenerator();
-        $entityGenerator->setName($name);
-        $entityGenerator->setNamespaceName($namespace);
-        $entityGenerator->setExtendedClass($parentGenerator->getNamespaceName() . '\\' . $parentGenerator->getName());
-        $this->entities[$name] = "<?php\n\n" . $entityGenerator->generate();
-    }
-
-    protected function addProperty(ClassGenerator $generator, PropertyPattern $property, string $targetNamespace)
-    {
-        $upperName = $property->getUpperCamelCaseName();
-        $lowerName = $property->getLowerCamelCaseName();
-        $type = TypesMapper::mapType($property->getType());
-        if ($property instanceof EntityPattern) {
-            $type = '\\' . $targetNamespace . '\\' . self::NAMESPACE_ENTITIES . '\\' . $property->getName();
-        }
-
-        //add the property
-        $generator->addProperty($lowerName, null, PropertyGenerator::FLAG_PROTECTED);
-
-        //add the setter
-        $setter = new MethodGenerator();
-        $setter->setName('set' . $upperName);
-        $setter->setParameters([
-            $property->getLowerCamelCaseName() => [
-                'name' => $property->getLowerCamelCaseName(),
-                'type' => $type
+        $generator = new MethodGenerator();
+        $generator->setName('populate');
+        $generator->setParameters([
+            [
+                'name' => 'data',
+                'type' => 'array'
             ]
         ]);
-        $setter->setBody($this->createSetterBody($lowerName));
-        $generator->addMethodFromGenerator($setter);
-
-        //add the getter
-        $getter = new MethodGenerator();
-        $getter->setName('get' . $upperName);
-        $getter->setReturnType($type);
-        $getter->setBody($this->createGetterBody($lowerName));
-        $generator->addMethodFromGenerator($getter);
+        $generator->setBody($this->createPopulateBody($properties));
 
         //addDocblocks
         if ($this->addDocblockTypes || $this->addDocblockDescriptions) {
-            $setterDocblock = '';
-            $getterDocblock = '';
+            $docblock = '';
             if ($this->addDocblockDescriptions) {
-                $setterDocblock .= 'Set the ' . $lowerName;
-                $getterDocblock .= 'Get the ' . $lowerName;
+                $docblock .= 'Populate the entity';
             }
             if ($this->addDocblockTypes) {
-                if (!empty($setterDocblock) && !empty($getterDocblock)) {
-                    $setterDocblock .= "\n\n";
-                    $getterDocblock .= "\n\n";
+                if (!empty($docblock)) {
+                    $docblock .= "\n\n";
                 }
-                $setterDocblock .= '@param ' . $type . ' $' . $lowerName;
-                if ($this->useFluentSetters) {
-                    $setterDocblock .= "\n" . '@return self';
-                }
-                $getterDocblock .= '@return ' . $type;
+                $docblock .= '@param array $data';
             }
-            $setter->setDocBlock($setterDocblock);
-            $getter->setDocBlock($getterDocblock);
+            $generator->setDocBlock($docblock);
+        }
+        return $generator;
+    }
+
+    protected function createPopulateBody(array $properties) : string
+    {
+        $populations = [];
+        /* @var $pattern PropertyPattern */
+        foreach ($properties as $pattern) {
+            $populations[] = $this->createPopulationCall($pattern);
+        }
+
+        return implode("\n\n", $populations);
+    }
+
+    protected function createPopulationCall(PropertyPattern $pattern, int $variablesSuffix = 1)
+    {
+        $value = $this->createPopulationCallValue($pattern);
+        if ($pattern instanceof ArrayPattern) {
+            $loopCollectionName = 'collection' . $variablesSuffix;
+            $loopIteratorName = 'collectionItem' . $variablesSuffix;
+
+            $subPattern = $pattern->getContentProperty();
+            if ($subPattern instanceof ArrayPattern || $subPattern instanceof AssocPattern) {
+                $subPopulationCall = $this->createPopulationCall($subPattern, $variablesSuffix + 1);
+            } else {
+                $subPopulationCall = $this->createPopulationCallValue($subPattern);
+            }
+
+            $contentPropertyCallValue = str_replace(
+                '$data[\'items\']',
+                '$' . $loopIteratorName,
+                $subPopulationCall
+            );
+
+            $lines = [];
+            foreach (explode("\n", $contentPropertyCallValue) as $line) {
+                $lines[] = '    ' . $line;
+            }
+
+            end($lines);
+            $lastElementKey = key($lines);
+            $lastLineValue = substr($lines[$lastElementKey], 4);
+            if (count($lines) > 1) {
+                if (substr($lastLineValue, 0, 16) === '$this->setItems(') {
+                    $lastLineValue = substr($lastLineValue, 16, strlen($lastLineValue) - 18);
+                }
+            }
+            $lines[$lastElementKey] = '    $' . $loopCollectionName . '[] = ' . $lastLineValue . ';';
+
+            $populationCall = '$' . $loopCollectionName . ' = [];' . "\n";
+            $populationCall .= 'foreach (' . $value . ' as $' . $loopIteratorName . ') {' . "\n";
+            $populationCall .= implode("\n", $lines) . "\n";
+            $populationCall .= '}' . "\n";
+            $populationCall .= '$this->set' . $pattern->getUpperCamelCaseName() . '($' . $loopCollectionName . ');';
+            return $populationCall;
+        } elseif ($pattern instanceof AssocPattern) {
+
+        } else {
+            return '$this->set' . $pattern->getUpperCamelCaseName() . '(' . $value . ');';
         }
     }
 
-    protected function createSetterBody(string $propertyName)
+    protected function createPopulationCallValue(PropertyPattern $pattern) : string
     {
-        $body = '$this->' . $propertyName . ' = $' . $propertyName . ';';
-        if ($this->useFluentSetters) {
-            $body .= "\n\n" . 'return $this;';
+        if ($pattern instanceof ArrayPattern || $pattern instanceof AssocPattern) {
+            return '$data[\'' . $pattern->getName() . '\'] ?? []';
+        } elseif ($pattern instanceof EntityPattern) {
+            $targetClass = '\\' . $this->entitiesNamespace . '\\' . $pattern->getClassName();
+            return 'new ' . $targetClass . '($data[\'' . $pattern->getName() . '\'] ?? [])';
+        } else {
+            return '$data[\'' . $pattern->getName() . '\'] ?? null';
         }
-        return $body;
     }
 
-    protected function createGetterBody(string $propertyName)
+    protected function createToArray(array $properties) : MethodGenerator
     {
-        return 'return $this->' . $propertyName . ';';
+        $generator = new MethodGenerator();
+        $generator->setName('toArray');
+        $generator->setReturnType('array');
+        $generator->setBody($this->createToArrayBody($properties));
+
+        //addDocblocks
+        if ($this->addDocblockTypes || $this->addDocblockDescriptions) {
+            $docblock = '';
+            if ($this->addDocblockDescriptions) {
+                $docblock .= 'Get entity data as array';
+            }
+            if ($this->addDocblockTypes) {
+                if (!empty($docblock)) {
+                    $docblock .= "\n\n";
+                }
+                $docblock .= '@return array';
+            }
+            $generator->setDocBlock($docblock);
+        }
+        return $generator;
+    }
+
+    protected function createToArrayBody(array $properties) : string
+    {
+        $toArrayComponents = [];
+        /* @var $pattern PropertyPattern */
+        foreach ($properties as $pattern) {
+            $toArrayComponents[] = '    \'' . $pattern->getName() . '\' => ' . $this->createToArrayCall($pattern);
+        }
+        return 'return [' . "\n" . implode(",\n", $toArrayComponents) . "\n" . '];';
+    }
+
+    protected function createToArrayCall(PropertyPattern $pattern)
+    {
+        if ($pattern instanceof ArrayPattern) {
+            return 'null';
+        } elseif ($pattern instanceof AssocPattern) {
+            return 'null';
+        } elseif ($pattern instanceof EntityPattern) {
+            return '$this->get' . $pattern->getUpperCamelCaseName() . '()->toArray()';
+        } else {
+            return '$this->get' . $pattern->getUpperCamelCaseName() . '()';
+        }
     }
 }
