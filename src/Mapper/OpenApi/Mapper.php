@@ -59,15 +59,19 @@ class Mapper implements MapperInterface
             } else {
                 $pattern = new AssocPattern();
                 $pattern->setName($name);
+                $itemPattern = $this->createDefinitionPattern('items', $definition['items'], isset($definition['items']['$ref']));
+                $pattern->setContentProperty($itemPattern);
             }
         } elseif ($definition['type'] === 'array') {
             $pattern = new ArrayPattern();
             $pattern->setName($name);
+            $itemPattern = $this->createDefinitionPattern('items', $definition['items'], isset($definition['items']['$ref']));
+            $pattern->setContentProperty($itemPattern);
         } else {
             $pattern = new PropertyPattern();
             $pattern->setName($name);
-            $pattern->setType($definition['type']);
         }
+        $pattern->setType($definition['type']);
         return $pattern;
     }
 }

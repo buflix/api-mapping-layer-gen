@@ -4,7 +4,6 @@ namespace ApiMappingLayerGen\Mapper\Pattern;
 
 class EntityPattern extends PropertyPattern
 {
-    protected $type = 'object';
     /**
      * @var string
      */
