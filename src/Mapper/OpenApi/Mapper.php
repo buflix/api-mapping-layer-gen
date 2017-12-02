@@ -72,6 +72,9 @@ class Mapper implements MapperInterface
             $pattern->setName($name);
         }
         $pattern->setType($definition['type']);
+        if (isset($definition['description'])) {
+            $pattern->setDescription($definition['description']);
+        }
         return $pattern;
     }
 }

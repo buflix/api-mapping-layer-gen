@@ -12,11 +12,15 @@ class PropertyPattern
      * @var string
      */
     protected $type;
+    /**
+     * @var string
+     */
+    protected $description;
 
     /**
      * @param string $name
      */
-    public function setName(string $name)
+    public function setName(?string $name)
     {
         $this->name = $name;
     }
@@ -24,7 +28,7 @@ class PropertyPattern
     /**
      * @return string
      */
-    public function getName() : string
+    public function getName() : ?string
     {
         return $this->name;
     }
@@ -32,7 +36,7 @@ class PropertyPattern
     /**
      * @param string $type
      */
-    public function setType(string $type)
+    public function setType(?string $type)
     {
         $this->type = $type;
     }
@@ -40,17 +44,39 @@ class PropertyPattern
     /**
      * @return string
      */
-    public function getType() : string
+    public function getType() : ?string
     {
         return $this->type;
     }
 
-    public function getUpperCamelCaseName() : string
+    /**
+     * @param string $description
+     */
+    public function setDescription(?string $description)
+    {
+        $this->description = $description;
+    }
+
+    /**
+     * @return string
+     */
+    public function getDescription() : ?string
+    {
+        return $this->description;
+    }
+
+    /**
+     * @return null|string
+     */
+    public function getUpperCamelCaseName() : ?string
     {
         return str_replace(['-', '_'], '', ucwords($this->name, '-_'));
     }
 
-    public function getLowerCamelCaseName() : string
+    /**
+     * @return null|string
+     */
+    public function getLowerCamelCaseName() : ?string
     {
         return lcfirst($this->getUpperCamelCaseName());
     }

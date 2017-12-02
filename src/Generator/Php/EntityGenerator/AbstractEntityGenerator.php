@@ -136,7 +136,14 @@ abstract class AbstractEntityGenerator implements EntityGeneratorInterface
         $lowerName = $property->getLowerCamelCaseName();
 
         //add the property
-        $generator->addProperty($lowerName, null, PropertyGenerator::FLAG_PROTECTED);
+        $propertyGenerator = new PropertyGenerator($lowerName, null, PropertyGenerator::FLAG_PROTECTED);
+        $propertyDocblock = '@var null|' . $type;
+        if ($property->getDescription() !== null) {
+            $propertyDocblock = $property->getDescription() . "\n\n" . $propertyDocblock;
+        }
+        $propertyGenerator->setDocBlock($propertyDocblock);
+        $generator->addPropertyFromGenerator($propertyGenerator);
+
 
         //add the setter
         $setter = new MethodGenerator();
