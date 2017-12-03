@@ -34,16 +34,16 @@ class EntityBuilder
 
         foreach ($this->entityGenerator->getEntities() as $className => $entity) {
             $file = $targetDirectory . EntityGeneratorInterface::NAMESPACE_ENTITIES . '/' . $className . '.php';
-//            if (!is_file($file)) {
+            if (!is_file($file)) {
                 file_put_contents($file, $entity);
-//            }
+            }
         }
 
         foreach ($this->entityGenerator->getCollections() as $className => $collection) {
             $file = $targetDirectory . EntityGeneratorInterface::NAMESPACE_COLLECTIONS . '/' . $className . '.php';
-//            if (!is_file($file)) {
+            if (!is_file($file)) {
                 file_put_contents($file, $collection);
-//            }
+            }
         }
     }
 }
