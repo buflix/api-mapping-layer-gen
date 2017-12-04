@@ -9,6 +9,7 @@ use ApiMappingLayerGen\Mapper\Pattern\EntityPattern;
 use ApiMappingLayerGen\Mapper\Pattern\PropertyPattern;
 use SimpleCollection\ArrayCollection;
 use SimpleCollection\AssocCollection;
+use SimpleCollection\Entity\AbstractEntity;
 use SimpleCollection\Entity\EntityArrayCollection;
 use SimpleCollection\Entity\EntityAssocCollection;
 use Zend\Code\Generator\ClassGenerator;
@@ -172,7 +173,7 @@ class CollectionBased extends AbstractEntityGenerator implements EntityGenerator
                 '    $collection->offsetSet($key, ' . $setValue . ')' . ';' . "\n" .
                 '}' . "\n" .
                 '$this->set' . $pattern->getUpperCamelCaseName() . '($collection);'
-            ;
+                ;
         } else {
             return '$this->set' . $pattern->getUpperCamelCaseName() . '(' . $value . ');';
         }
@@ -226,10 +227,69 @@ class CollectionBased extends AbstractEntityGenerator implements EntityGenerator
 
     protected function createToArrayCall(PropertyPattern $pattern)
     {
-        if ($pattern instanceof ArrayPattern || $pattern instanceof AssocPattern || $pattern instanceof EntityPattern) {
+        if ($pattern instanceof ArrayPattern || $pattern instanceof AssocPattern) {
+            return '$this->get' . $pattern->getUpperCamelCaseName() . '()->getAll()';
+        } elseif ($pattern instanceof EntityPattern) {
             return '$this->get' . $pattern->getUpperCamelCaseName() . '()->toArray()';
         } else {
             return '$this->get' . $pattern->getUpperCamelCaseName() . '()';
         }
+    }
+
+    protected function addAbstractGeneratedEntity(string $targetNamespace)
+    {
+        $generator = new ClassGenerator();
+        $generator->setName(self::ABSTRACT_ENTITY_NAME);
+        $generator->setNamespaceName($targetNamespace . '\\' . self::NAMESPACE_GENERATED_ENTITIES);
+        $generator->addFlag(ClassGenerator::FLAG_ABSTRACT);
+        $generator->setImplementedInterfaces(['\JsonSerializable']);
+        $generator->setExtendedClass(AbstractEntity::class);
+
+        //add __construct
+        $construct = new MethodGenerator();
+        $construct->setName('__construct');
+        $construct->setParameters([
+            [
+                'name' => 'data',
+                'type' => 'array',
+                'defaultvalue' => []
+            ]
+        ]);
+        $construct->setBody('$this->populate($data);');
+        $generator->addMethodFromGenerator($construct);
+
+        //add populate
+        $populate = new MethodGenerator();
+        $populate->setName('populate');
+        $populate->setParameters([
+            [
+                'name' => 'data',
+                'type' => 'array'
+            ]
+        ]);
+        $populate->addFlag(MethodGenerator::FLAG_ABSTRACT);
+        $generator->addMethodFromGenerator($populate);
+
+        //addDocblocks
+        if ($this->addDocblockTypes || $this->addDocblockDescriptions) {
+            $constructDocblock = '';
+            $populateDocblock = '';
+            if ($this->addDocblockDescriptions) {
+                $constructDocblock .= 'Create the entity using a population array';
+                $populateDocblock .= 'Populate the entity';
+            }
+            if ($this->addDocblockTypes) {
+                if (!empty($populateDocblock) && !empty($toArrayDocblock) && !empty($jsonSerializeDocblock)) {
+                    $constructDocblock .= "\n\n";
+                    $populateDocblock .= "\n\n";
+                }
+                $constructDocblock .= '@param array $data';
+                $populateDocblock .= '@param array $data';
+            }
+            $construct->setDocBlock($constructDocblock);
+            $populate->setDocBlock($populateDocblock);
+        }
+
+        $this->generatedEntities[$generator->getName()] = "<?php\n\n" . $generator->generate();
     }
 }

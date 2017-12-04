@@ -31,8 +31,9 @@ class Mapper implements MapperInterface
     protected function process()
     {
         $baseDefinition = $this->referenceResolver->resolveReference($this->definitionFile);
+        $baseDefinitions = $baseDefinition->getValue();
         $baseDefinitions = $this->referenceResolver->resolveAllReferences(
-            $baseDefinition->getValue(),
+            $baseDefinitions,
             $this->definitionFile
         );
         $baseDefinitions = $this->allOfResolver->resolveKeywordAllOf($baseDefinitions);
@@ -59,8 +60,11 @@ class Mapper implements MapperInterface
             } else {
                 $pattern = new AssocPattern();
                 $pattern->setName($name);
-                $itemPattern = $this->createDefinitionPattern('items', $definition['items'], isset($definition['items']['$ref']));
-                $pattern->setContentProperty($itemPattern);
+                foreach ($definition['properties'] ?? [] as $propertyName => $propertyDef) {
+                    $propertyPattern = $this->createDefinitionPattern($propertyName, $propertyDef, isset($propertyDef['$ref']));
+                    $pattern->setContentProperty($propertyPattern);
+                    break;  //pick first property of assoc as content type
+                }
             }
         } elseif ($definition['type'] === 'array') {
             $pattern = new ArrayPattern();

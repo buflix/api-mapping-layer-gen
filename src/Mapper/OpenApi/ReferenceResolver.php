@@ -12,29 +12,21 @@ class ReferenceResolver
     protected $definitions = [];
     protected $trackedRefs = [];
 
+    protected $incomplete = true;
+
     public function resolveAllReferences(array $definition, string $currentFile) : array
     {
-        foreach ($definition as $key => $subDef) {
-            if ($key === '$ref') {
-                $targetRef = $this->resolveRefString($subDef, $currentFile);
-                $targetRefKey = $targetRef->getRefKey();
-
-                $this->trackRef($targetRefKey);    //detect cyclic dependencies
-
-                $definition = array_replace_recursive($definition, $targetRef->getValue());
-                foreach ($definition as $subKey => $subSubDef) {
-                    if (is_array($subSubDef)) {
-                        $definition[$subKey] = $this->resolveAllReferences($subSubDef, $currentFile);
-                    }
-                }
-            } elseif (is_array($definition[$key])) {
-                $definition[$key] = $this->resolveAllReferences($subDef, $currentFile);
-            }
+        while ($this->incomplete) {
+            $this->incomplete = false;
+            $this->trackedRefs = [];
+            $definition = $this->resolveAllReferencesRec($definition, $currentFile);
+            $this->definitions[$this->getCleanFilename($currentFile)] = $definition;
         }
+
         return $definition;
     }
 
-    public function resolveRefString(string $refString, string $currentFile) : Reference
+    public function resolveRefString(string $refString, string $currentFile) : ?Reference
     {
         $sharpPos = strpos($refString, '#');
         if ($sharpPos !== false) {
@@ -51,8 +43,10 @@ class ReferenceResolver
         return $this->resolveReference($file, $ref);
     }
 
-    public function resolveReference(string $file, ?string $ref = null) : Reference
+    public function resolveReference(string $file, ?string $ref = null) : ?Reference
     {
+        $file = $this->getCleanFilename($file);
+
         if (isset($this->definitions[$file])) {
             $definition = $this->definitions[$file];
         } else {
@@ -78,6 +72,13 @@ class ReferenceResolver
         if (!empty($ref)) {
             $refSegments = explode('/', $ref);
             foreach ($refSegments as $refSegment) {
+                if (!isset($target[$refSegment])) {
+                    if (isset($target['definitions']) && isset($target['definitions'][$refSegment])) {
+                        $target = $target['definitions'];
+                    } else {
+                        return null;
+                    }
+                }
                 $target = $target[$refSegment];
             }
             $reference->setRefKey($refSegment);
@@ -86,6 +87,34 @@ class ReferenceResolver
         $reference->setValue($target);
 
         return $reference;
+    }
+
+    protected function resolveAllReferencesRec(array $definition, string $currentFile) : array
+    {
+        foreach ($definition as $key => $subDef) {
+            if (count($definition) == 1 && $key === '$ref') {
+                $targetRef = $this->resolveRefString($subDef, $currentFile);
+                if (!$targetRef instanceof Reference) {
+                    $this->incomplete = true;
+                    continue;
+                }
+                $targetRefKey = $targetRef->getRefKey();
+
+                if (!empty($targetRefKey)) {
+                    $this->trackRef($targetRefKey);    //detect cyclic dependencies
+                }
+
+                $definition = array_replace_recursive($definition, $targetRef->getValue());
+                foreach ($definition as $subKey => $subSubDef) {
+                    if (is_array($subSubDef)) {
+                        $definition[$subKey] = $this->resolveAllReferencesRec($subSubDef, $currentFile);
+                    }
+                }
+            } elseif (is_array($definition[$key])) {
+                $definition[$key] = $this->resolveAllReferencesRec($subDef, $currentFile);
+            }
+        }
+        return $definition;
     }
 
     protected function trackRef(string $targetRefKey)
@@ -104,5 +133,10 @@ class ReferenceResolver
         } else {
             $this->trackedRefs[$targetRefKey] = 1;
         }
+    }
+
+    protected function getCleanFilename(string $file) : string
+    {
+        return realpath(ltrim($file, '/'));
     }
 }

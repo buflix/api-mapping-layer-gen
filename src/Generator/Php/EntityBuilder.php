@@ -18,7 +18,9 @@ class EntityBuilder
     {
         if ($targetDirectory === null) {
             $loader = spl_autoload_functions()[0][0];
-            assert($loader instanceof ClassLoader);
+            if (!$loader instanceof ClassLoader) {
+                throw new \Exception('You need to provide the $targetDirectory for EntityBuilder::buildEntities() as you are not using the default composer autoloader!');
+            }
             $namespaces = $loader->getPrefixesPsr4();
             $namespace = $targetNamespace . '\\';
             $targetDirectory = reset($namespaces[$namespace]);

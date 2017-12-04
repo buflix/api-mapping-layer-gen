@@ -12,7 +12,7 @@ class AssocPattern extends PropertyPattern
     /**
      * @return PropertyPattern
      */
-    public function getContentProperty() : PropertyPattern
+    public function getContentProperty() : ?PropertyPattern
     {
         return $this->contentProperty;
     }
