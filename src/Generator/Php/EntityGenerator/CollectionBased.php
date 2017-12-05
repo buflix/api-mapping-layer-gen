@@ -76,7 +76,7 @@ class CollectionBased extends AbstractEntityGenerator implements EntityGenerator
             if ($property instanceof ArrayPattern) {
                 $type = '\\' . EntityArrayCollection::class;
             } elseif ($property instanceof AssocPattern) {
-                $type = '\\' . EntityAssocCollection::class;
+                $type = '\\' . AssocCollection::class;
             }
             if ($contentProperty instanceof EntityPattern && $this->addCustomCollections) {
                 $type = $this->createCustomCollection($property, $type);
@@ -106,7 +106,12 @@ class CollectionBased extends AbstractEntityGenerator implements EntityGenerator
 
     protected function getCollectionClass(PropertyPattern $pattern)
     {
-        return $pattern->getUpperCamelCaseName() . 'Collection';
+        $contentProperty = $pattern->getContentProperty();
+        if ($contentProperty instanceof EntityPattern) {
+            return $contentProperty->getClassName() . 'Collection';
+        } else {
+            return $pattern->getUpperCamelCaseName() . 'Collection';
+        }
     }
 
     protected function createPopulate(array $properties) : MethodGenerator
@@ -156,21 +161,36 @@ class CollectionBased extends AbstractEntityGenerator implements EntityGenerator
             $collectionClass = $this->getCollectionType($pattern);
 
             $contentProperty = $pattern->getContentProperty();
+            $assocSet = false;
             if ($contentProperty instanceof EntityPattern) {
                 $contentClass = '\\' . $this->entitiesNamespace . '\\' . $contentProperty->getClassName();
                 $setValue = 'new ' . $contentClass . '($item)';
+                if ($pattern instanceof AssocPattern) {
+                    $assocSet = true;
+                }
             } elseif ($contentProperty instanceof ArrayPattern) {
                 $setValue = 'new ' . '\\' . ArrayCollection::class . '($item)';
             } elseif ($contentProperty instanceof AssocPattern) {
                 $setValue = 'new ' . '\\' . AssocCollection::class . '($item)';
+                $assocSet = true;
             } else {
                 $setValue = '$item';
+                if ($pattern instanceof AssocPattern) {
+                    $assocSet = true;
+                }
+            }
+
+            if ($assocSet) {
+                $loophead = 'foreach (' . $value . ' as $key => $item) {' . "\n" .
+                    '    $collection->offsetSet($key, ' . $setValue . ')' . ';' . "\n";
+            } else {
+                $loophead = 'foreach (' . $value . ' as $item) {' . "\n" .
+                    '    $collection->add(' . $setValue . ')' . ';' . "\n";
             }
 
             return
                 '$collection = new ' . $collectionClass . '();' . "\n" .
-                'foreach (' . $value . ' as $key => $item) {' . "\n" .
-                '    $collection->offsetSet($key, ' . $setValue . ')' . ';' . "\n" .
+                $loophead .
                 '}' . "\n" .
                 '$this->set' . $pattern->getUpperCamelCaseName() . '($collection);'
                 ;
@@ -228,7 +248,16 @@ class CollectionBased extends AbstractEntityGenerator implements EntityGenerator
     protected function createToArrayCall(PropertyPattern $pattern)
     {
         if ($pattern instanceof ArrayPattern || $pattern instanceof AssocPattern) {
-            return '$this->get' . $pattern->getUpperCamelCaseName() . '()->getAll()';
+            $contentProperty = $pattern->getContentProperty();
+            if (
+                $contentProperty instanceof EntityPattern ||
+                $contentProperty instanceof ArrayPattern ||
+                $contentProperty instanceof AssocPattern
+            ) {
+                return '$this->get' . $pattern->getUpperCamelCaseName() . '()->toArray()';
+            } else {
+                return '$this->get' . $pattern->getUpperCamelCaseName() . '()->getAll()';
+            }
         } elseif ($pattern instanceof EntityPattern) {
             return '$this->get' . $pattern->getUpperCamelCaseName() . '()->toArray()';
         } else {

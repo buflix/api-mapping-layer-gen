@@ -14,6 +14,8 @@ abstract class AbstractEntityGenerator implements EntityGeneratorInterface
     protected $addDocblockTypes;
     protected $addDocblockDescriptions;
     protected $useFluentSetters;
+    protected $useSetterTypeHints;
+    protected $useGetterTypeHints;
 
     protected $generatedEntities = [];
     protected $entities = [];
@@ -24,6 +26,8 @@ abstract class AbstractEntityGenerator implements EntityGeneratorInterface
         $this->addDocblockTypes = $settings['addDocblockTypes'] ?? true;
         $this->addDocblockDescriptions = $settings['addDocblockDescriptions'] ?? false;
         $this->useFluentSetters = $settings['useFluentSetters'] ?? false;
+        $this->useSetterTypeHints = $settings['useSetterTypeHints'] ?? true;
+        $this->useGetterTypeHints = $settings['useGetterTypeHints'] ?? true;
     }
 
     public function getGeneratedEntities() : array
@@ -148,11 +152,14 @@ abstract class AbstractEntityGenerator implements EntityGeneratorInterface
         //add the setter
         $setter = new MethodGenerator();
         $setter->setName('set' . $upperName);
+        $setterDefinition = [
+            'name' => $property->getLowerCamelCaseName()
+        ];
+        if ($this->useSetterTypeHints) {
+            $setterDefinition['type'] = '?' . $type;
+        }
         $setter->setParameters([
-            $property->getLowerCamelCaseName() => [
-                'name' => $property->getLowerCamelCaseName(),
-                'type' => '?' . $type
-            ]
+            $property->getLowerCamelCaseName() => $setterDefinition
         ]);
         $setter->setBody($this->createSetterBody($lowerName));
         $generator->addMethodFromGenerator($setter);
@@ -160,7 +167,9 @@ abstract class AbstractEntityGenerator implements EntityGeneratorInterface
         //add the getter
         $getter = new MethodGenerator();
         $getter->setName('get' . $upperName);
-        $getter->setReturnType('?' . $type);
+        if ($this->useGetterTypeHints) {
+            $getter->setReturnType('?' . $type);
+        }
         $getter->setBody($this->createGetterBody($lowerName));
         $generator->addMethodFromGenerator($getter);
 
@@ -179,7 +188,7 @@ abstract class AbstractEntityGenerator implements EntityGeneratorInterface
                 }
                 $setterDocblock .= '@param null|' . $type . ' $' . $lowerName;
                 if ($this->useFluentSetters) {
-                    $setterDocblock .= "\n" . '@return self';
+                    $setterDocblock .= "\n" . '@return $this';
                 }
                 $getterDocblock .= '@return null|' . $type;
             }

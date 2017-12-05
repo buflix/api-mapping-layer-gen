@@ -5,7 +5,9 @@ namespace ApiMappingLayerGen\Generator\Php;
 class TypesMapper
 {
     const TYPES_MAP = [
-        'integer' => 'int'
+        'integer' => 'int',
+        'number' => 'float',
+        'boolean' => 'bool'
     ];
 
     public static function mapType(string $type)

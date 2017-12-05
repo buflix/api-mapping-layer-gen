@@ -68,9 +68,13 @@ class Mapper implements MapperInterface
             }
         } elseif ($definition['type'] === 'array') {
             $pattern = new ArrayPattern();
-            $pattern->setName($name);
             $itemPattern = $this->createDefinitionPattern('items', $definition['items'], isset($definition['items']['$ref']));
             $pattern->setContentProperty($itemPattern);
+            if ($itemPattern instanceof EntityPattern) {
+                $pattern->setName($itemPattern->getClassName());
+            } else {
+                $pattern->setName($name);
+            }
         } else {
             $pattern = new PropertyPattern();
             $pattern->setName($name);
