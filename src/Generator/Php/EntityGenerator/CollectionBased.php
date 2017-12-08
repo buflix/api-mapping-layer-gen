@@ -250,9 +250,12 @@ class CollectionBased extends AbstractEntityGenerator implements EntityGenerator
         if ($pattern instanceof ArrayPattern || $pattern instanceof AssocPattern) {
             $contentProperty = $pattern->getContentProperty();
             if (
-                $contentProperty instanceof EntityPattern ||
-                $contentProperty instanceof ArrayPattern ||
-                $contentProperty instanceof AssocPattern
+                $pattern instanceof ArrayPattern
+                && (
+                    $contentProperty instanceof EntityPattern ||
+                    $contentProperty instanceof ArrayPattern ||
+                    $contentProperty instanceof AssocPattern
+                )
             ) {
                 return '$this->get' . $pattern->getUpperCamelCaseName() . '()->toArray()';
             } else {
