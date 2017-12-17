@@ -177,7 +177,22 @@ class Native extends AbstractEntityGenerator implements EntityGeneratorInterface
 
             $toArrayComponents[] = '    \'' . $pattern->getName() . '\' => ' . $this->createToArrayCall($pattern);
         }
-        return $preparationCalls . 'return [' . "\n" . implode(",\n", $toArrayComponents) . "\n" . '];';
+        if ($this->hideNullValues) {
+            return $preparationCalls .
+                'return array_filter(' . "\n" .
+                '    [' . "\n" .
+                '    ' . implode(",\n    ", $toArrayComponents) . "\n" .
+                '    ],' . "\n" .
+                '    function ($value) {' . "\n" .
+                '        return $value !== null;' . "\n" .
+                '    }' . "\n" .
+                ');';
+        } else {
+            return $preparationCalls .
+                'return [' . "\n" .
+                implode(",\n", $toArrayComponents) . "\n" .
+                '];';
+        }
     }
 
     protected function createToArrayCall(PropertyPattern $pattern)

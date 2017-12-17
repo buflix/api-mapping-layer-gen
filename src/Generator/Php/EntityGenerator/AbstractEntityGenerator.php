@@ -16,6 +16,7 @@ abstract class AbstractEntityGenerator implements EntityGeneratorInterface
     protected $useFluentSetters;
     protected $useSetterTypeHints;
     protected $useGetterTypeHints;
+    protected $hideNullValues;
 
     protected $generatedEntities = [];
     protected $entities = [];
@@ -28,6 +29,7 @@ abstract class AbstractEntityGenerator implements EntityGeneratorInterface
         $this->useFluentSetters = $settings['useFluentSetters'] ?? false;
         $this->useSetterTypeHints = $settings['useSetterTypeHints'] ?? true;
         $this->useGetterTypeHints = $settings['useGetterTypeHints'] ?? true;
+        $this->hideNullValues = $settings['hideNullValues'] ?? true;
     }
 
     public function getGeneratedEntities() : array

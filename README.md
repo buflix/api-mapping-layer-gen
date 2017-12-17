@@ -37,8 +37,12 @@ $mapper = new Mapper($file);
 $patterns = $mapper->getPatterns();
 
 $entityBuilder = new EntityBuilder(new Native([
-    'addDocblockDescriptions' => true,
-    'useFluentSetters' => true
+    'addDocblockTypes' => true,
+    'addDocblockDescriptions' => false,
+    'useFluentSetters' => false,
+    'useSetterTypeHints' => true,
+    'useGetterTypeHints' => true,
+    'hideNullValues' => true
 ]));
 
 $entityBuilder->buildEntities($patterns, 'App', 'src/App');
