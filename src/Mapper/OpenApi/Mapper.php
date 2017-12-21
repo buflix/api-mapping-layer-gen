@@ -38,7 +38,19 @@ class Mapper implements MapperInterface
         );
         $baseDefinitions = $this->allOfResolver->resolveKeywordAllOf($baseDefinitions);
 
-        foreach ($baseDefinitions['definitions'] as $name => $definition) {
+        $models = null;
+        if (isset($baseDefinitions['swagger']) && version_compare($baseDefinitions['swagger'], '3.0') < 0) {
+            if (!isset($baseDefinitions['definitions'])) {
+                throw new \Exception('Your definition file has no definitions!');
+            }
+            $models = $baseDefinitions['definitions'];
+        } elseif (isset($baseDefinitions['openapi']) && version_compare($baseDefinitions['openapi'], '3.0') >= 0) {
+            if (!isset($baseDefinitions['components']) || !isset($baseDefinitions['components']['schemas'])) {
+                throw new \Exception('Your definition file has no components -> schemas!');
+            }
+            $models = $baseDefinitions['components']['schemas'];
+        }
+        foreach ($models as $name => $definition) {
             $this->patterns[] = $this->createDefinitionPattern($name, $definition, true);
         }
     }
