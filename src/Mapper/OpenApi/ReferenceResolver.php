@@ -2,16 +2,11 @@
 
 namespace ApiMappingLayerGen\Mapper\OpenApi;
 
-use ApiMappingLayerGen\Mapper\CyclicDependencyException;
 use ApiMappingLayerGen\Parser\YamlParser;
 
 class ReferenceResolver
 {
-    const REF_DEPENDENCY_LIMIT = 5000;
-
     protected $definitions = [];
-    protected $trackedRefs = [];
-
     protected $incomplete = true;
 
     public function resolveAllReferences(array $definition, string $currentFile) : array
@@ -45,27 +40,7 @@ class ReferenceResolver
 
     public function resolveReference(string $file, ?string $ref = null) : ?Reference
     {
-        $file = $this->getCleanFilename($file);
-
-        if (isset($this->definitions[$file])) {
-            $definition = $this->definitions[$file];
-        } else {
-            $fileContent = file_get_contents($file);
-
-            $fileEnding = substr($file, strpos($file, '.') + 1);
-            if (
-                $fileEnding == 'yml'
-                || $fileEnding == 'yaml'
-            ) {
-                $definition = YamlParser::parse($fileContent);
-            } elseif ($fileEnding == 'json') {
-                $definition = json_decode($fileContent, true);
-            } else {
-                $definition = YamlParser::parse($fileContent);
-            }
-
-            $this->definitions[$file] = $definition;
-        }
+        $definition = $this->getFileDefinition($file);
 
         $reference = new Reference();
         $target = $definition;
@@ -73,11 +48,7 @@ class ReferenceResolver
             $refSegments = explode('/', $ref);
             foreach ($refSegments as $refSegment) {
                 if (!isset($target[$refSegment])) {
-                    if (isset($target['definitions']) && isset($target['definitions'][$refSegment])) {
-                        $target = $target['definitions'];
-                    } else {
-                        return null;
-                    }
+                    return null;
                 }
                 $target = $target[$refSegment];
             }
@@ -98,11 +69,6 @@ class ReferenceResolver
                     $this->incomplete = true;
                     continue;
                 }
-                $targetRefKey = $targetRef->getRefKey();
-
-                if (!empty($targetRefKey)) {
-                    $this->trackRef($targetRefKey);    //detect cyclic dependencies
-                }
 
                 $definition = array_replace_recursive($definition, $targetRef->getValue());
                 foreach ($definition as $subKey => $subSubDef) {
@@ -117,22 +83,31 @@ class ReferenceResolver
         return $definition;
     }
 
-    protected function trackRef(string $targetRefKey)
+    protected function getFileDefinition(string $file) : array
     {
-        if (isset($this->trackedRefs[$targetRefKey])) {
-            $this->trackedRefs[$targetRefKey] += 1;
-            if ($this->trackedRefs[$targetRefKey] > self::REF_DEPENDENCY_LIMIT) {
-                $responsibleDefinitions = [];
-                foreach ($this->trackedRefs as $name => $count) {
-                    if ($count > self::REF_DEPENDENCY_LIMIT / 2) {
-                        $responsibleDefinitions[] = $name;
-                    }
-                }
-                throw new CyclicDependencyException('Detected cyclic dependency between the following models in your definition: ' . implode(', ', $responsibleDefinitions));
+        $rawFilename = $file;
+        $file = $this->getCleanFilename($file);
+
+        if (!isset($this->definitions[$file])) {
+            $fileContent = file_get_contents($file);
+
+            $fileEnding = substr($file, strpos($file, '.') + 1);
+            if (
+                $fileEnding == 'yml'
+                || $fileEnding == 'yaml'
+            ) {
+                $definition = YamlParser::parse($fileContent);
+            } elseif ($fileEnding == 'json') {
+                $definition = json_decode($fileContent, true);
+            } else {
+                $definition = YamlParser::parse($fileContent);
             }
-        } else {
-            $this->trackedRefs[$targetRefKey] = 1;
+
+            $this->definitions[$file] = $definition;
+            $this->definitions[$file] = $this->resolveAllReferencesRec($definition, $rawFilename);
         }
+
+        return $this->definitions[$file];
     }
 
     protected function getCleanFilename(string $file) : string
