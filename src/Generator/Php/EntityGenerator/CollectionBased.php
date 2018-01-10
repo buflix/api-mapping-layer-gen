@@ -194,6 +194,15 @@ class CollectionBased extends AbstractEntityGenerator implements EntityGenerator
                 '}' . "\n" .
                 '$this->set' . $pattern->getUpperCamelCaseName() . '($collection);'
                 ;
+        } elseif ($pattern instanceof EntityPattern) {
+            if ($pattern->isRequired()) {
+                return '$this->set' . $pattern->getUpperCamelCaseName() . '(' . $value . ');';
+            } else {
+                return
+                    'if (isset($data[\'' . $pattern->getName() . '\']) && !empty($data[\'' . $pattern->getName() . '\'])) {' . "\n" .
+                    '    $this->set' . $pattern->getUpperCamelCaseName() . '(' . $value . ');' . "\n" .
+                    '}';
+            }
         } else {
             return '$this->set' . $pattern->getUpperCamelCaseName() . '(' . $value . ');';
         }
@@ -262,7 +271,11 @@ class CollectionBased extends AbstractEntityGenerator implements EntityGenerator
                 return '$this->get' . $pattern->getUpperCamelCaseName() . '()->getAll()';
             }
         } elseif ($pattern instanceof EntityPattern) {
-            return '$this->get' . $pattern->getUpperCamelCaseName() . '()->toArray()';
+            if ($pattern->isRequired()) {
+                return '$this->get' . $pattern->getUpperCamelCaseName() . '()->toArray()';
+            } else {
+                return '$this->get' . $pattern->getUpperCamelCaseName() . '() ? $this->get' . $pattern->getUpperCamelCaseName() . '()->toArray() : null';
+            }
         } else {
             return '$this->get' . $pattern->getUpperCamelCaseName() . '()';
         }

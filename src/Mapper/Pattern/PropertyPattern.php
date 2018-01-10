@@ -16,6 +16,10 @@ class PropertyPattern
      * @var string
      */
     protected $description;
+    /**
+     * @var bool
+     */
+    protected $required = false;
 
     /**
      * @param string $name
@@ -63,6 +67,22 @@ class PropertyPattern
     public function getDescription() : ?string
     {
         return $this->description;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isRequired(): bool
+    {
+        return $this->required;
+    }
+
+    /**
+     * @param bool $required
+     */
+    public function setRequired(bool $required)
+    {
+        $this->required = $required;
     }
 
     /**

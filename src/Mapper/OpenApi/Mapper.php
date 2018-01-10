@@ -69,6 +69,14 @@ class Mapper implements MapperInterface
                     $propertyPattern = $this->createDefinitionPattern($propertyName, $propertyDef, isset($propertyDef['$ref']));
                     $pattern->addProperty($propertyPattern);
                 }
+                if (isset($definition['required'])) {
+                    /* @var $property PropertyPattern */
+                    foreach ($pattern->getProperties() as $property) {
+                        if (in_array($property->getName(), $definition['required'], true)) {
+                            $property->setRequired(true);
+                        }
+                    }
+                }
             } else {
                 $pattern = new AssocPattern();
                 $pattern->setName($name);
