@@ -15,6 +15,13 @@ use SimpleCollection\Entity\EntityAssocCollection;
 use Zend\Code\Generator\ClassGenerator;
 use Zend\Code\Generator\MethodGenerator;
 
+/**
+ * The created entities will use collection classes instead of arrays.
+ *
+ * Collections can give your entities a clear defined structure and can be extended with extra features which could help
+ *  you to have a clean code structure.
+ * But collections will also have some overhead rising with the size of your data.
+ */
 class CollectionBased extends AbstractEntityGenerator implements EntityGeneratorInterface
 {
     protected $addCustomCollections;
@@ -22,12 +29,23 @@ class CollectionBased extends AbstractEntityGenerator implements EntityGenerator
     protected $entitiesNamespace;
     protected $collectionsNamespace;
 
+    /**
+     * Create the generator with the given settings
+     *
+     * @see AbstractEntityGenerator
+     *
+     * @param array $settings
+     */
     public function __construct(array $settings = [])
     {
         parent::__construct($settings);
         $this->addCustomCollections = $settings['addCustomCollections'] ?? true;
     }
 
+    /**
+     * @param array $patterns
+     * @param string $targetNamespace
+     */
     public function processPatterns(array $patterns, string $targetNamespace)
     {
         $this->entitiesNamespace = $targetNamespace . '\\' . self::NAMESPACE_ENTITIES;
@@ -65,6 +83,12 @@ class CollectionBased extends AbstractEntityGenerator implements EntityGenerator
         }
     }
 
+    /**
+     * Decides which collection class will be used in which case
+     *
+     * @param PropertyPattern $property
+     * @return string
+     */
     protected function getCollectionType(PropertyPattern $property)
     {
         $contentProperty = $property->getContentProperty();
@@ -91,6 +115,13 @@ class CollectionBased extends AbstractEntityGenerator implements EntityGenerator
         return $type;
     }
 
+    /**
+     * Creates a custom collection class extending the collection class which matches for the case
+     *
+     * @param PropertyPattern $pattern
+     * @param string $type
+     * @return string
+     */
     protected function createCustomCollection(PropertyPattern $pattern, string $type) : string
     {
         $collectionName = $this->getCollectionClass($pattern);
@@ -104,6 +135,12 @@ class CollectionBased extends AbstractEntityGenerator implements EntityGenerator
         return '\\' . $this->collectionsNamespace . '\\' . $collectionName;
     }
 
+    /**
+     * Creates the class name for the custom collection class
+     *
+     * @param PropertyPattern $pattern
+     * @return string
+     */
     protected function getCollectionClass(PropertyPattern $pattern)
     {
         $contentProperty = $pattern->getContentProperty();
@@ -114,6 +151,12 @@ class CollectionBased extends AbstractEntityGenerator implements EntityGenerator
         }
     }
 
+    /**
+     * Create a method that populates the entity
+     *
+     * @param array $properties
+     * @return MethodGenerator
+     */
     protected function createPopulate(array $properties) : MethodGenerator
     {
         $generator = new MethodGenerator();
@@ -143,6 +186,12 @@ class CollectionBased extends AbstractEntityGenerator implements EntityGenerator
         return $generator;
     }
 
+    /**
+     * Creates the body of the populate method
+     *
+     * @param array $properties
+     * @return string
+     */
     protected function createPopulateBody(array $properties) : string
     {
         $populations = [];
@@ -154,6 +203,12 @@ class CollectionBased extends AbstractEntityGenerator implements EntityGenerator
         return implode("\n\n", $populations);
     }
 
+    /**
+     * Creates the code to populate one property of the entity
+     *
+     * @param PropertyPattern $pattern
+     * @return string
+     */
     protected function createPopulationCall(PropertyPattern $pattern)
     {
         $value = $this->createPopulationCallValue($pattern);
@@ -208,6 +263,12 @@ class CollectionBased extends AbstractEntityGenerator implements EntityGenerator
         }
     }
 
+    /**
+     * Creates the code that produces the value that will be set to a property on population
+     *
+     * @param PropertyPattern $pattern
+     * @return string
+     */
     protected function createPopulationCallValue(PropertyPattern $pattern) : string
     {
         if ($pattern instanceof ArrayPattern || $pattern instanceof AssocPattern) {
@@ -220,6 +281,12 @@ class CollectionBased extends AbstractEntityGenerator implements EntityGenerator
         }
     }
 
+    /**
+     * Creates the toArray() method
+     *
+     * @param array $properties
+     * @return MethodGenerator
+     */
     protected function createToArray(array $properties) : MethodGenerator
     {
         $generator = new MethodGenerator();
@@ -244,6 +311,12 @@ class CollectionBased extends AbstractEntityGenerator implements EntityGenerator
         return $generator;
     }
 
+    /**
+     * Creates the body of the toArray() method
+     *
+     * @param array $properties
+     * @return string
+     */
     protected function createToArrayBody(array $properties) : string
     {
         $toArrayComponents = [];
@@ -254,6 +327,12 @@ class CollectionBased extends AbstractEntityGenerator implements EntityGenerator
         return 'return [' . "\n" . implode(",\n", $toArrayComponents) . "\n" . '];';
     }
 
+    /**
+     * Creates the value of one property when calling toArray()
+     *
+     * @param PropertyPattern $pattern
+     * @return string
+     */
     protected function createToArrayCall(PropertyPattern $pattern)
     {
         if ($pattern instanceof ArrayPattern || $pattern instanceof AssocPattern) {
@@ -281,6 +360,12 @@ class CollectionBased extends AbstractEntityGenerator implements EntityGenerator
         }
     }
 
+    /**
+     * Overrides the parent implementation to skip toArray() and jsonSerialize() as the are implemented in the
+     * abstract entity class of the collection
+     *
+     * @param string $targetNamespace
+     */
     protected function addAbstractGeneratedEntity(string $targetNamespace)
     {
         $generator = new ClassGenerator();

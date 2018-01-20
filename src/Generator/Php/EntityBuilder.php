@@ -2,18 +2,36 @@
 
 namespace ApiMappingLayerGen\Generator\Php;
 
+use ApiMappingLayerGen\Generator\Common\TargetDirectory;
 use ApiMappingLayerGen\Generator\Php\EntityGenerator\EntityGeneratorInterface;
 use Composer\Autoload\ClassLoader;
 
+/**
+ * Creates the files the given entity generator produced
+ */
 class EntityBuilder
 {
+    /**
+     * @var EntityGeneratorInterface
+     */
     protected $entityGenerator;
 
+    /**
+     * @param EntityGeneratorInterface $entityGenerator
+     */
     public function __construct(EntityGeneratorInterface $entityGenerator)
     {
         $this->entityGenerator = $entityGenerator;
     }
 
+    /**
+     * Builds the entities and creates the files
+     *
+     * @param array $patterns
+     * @param string $targetNamespace
+     * @param string|null $targetDirectory
+     * @throws \Exception
+     */
     public function buildEntities(array $patterns, string $targetNamespace, string $targetDirectory = null)
     {
         if ($targetDirectory === null) {
@@ -25,7 +43,7 @@ class EntityBuilder
             $namespace = $targetNamespace . '\\';
             $targetDirectory = reset($namespaces[$namespace]);
         }
-        $targetDirectory = realpath($targetDirectory) . '/';
+        $targetDirectory = TargetDirectory::getCanonicalTargetDirectory($targetDirectory);
 
         $this->entityGenerator->processPatterns($patterns, $targetNamespace);
 

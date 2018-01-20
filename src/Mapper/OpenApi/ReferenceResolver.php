@@ -4,11 +4,32 @@ namespace ApiMappingLayerGen\Mapper\OpenApi;
 
 use ApiMappingLayerGen\Parser\YamlParser;
 
+/**
+ * Class to resolve references and place refered data where they should be
+ */
 class ReferenceResolver
 {
+    /**
+     * Store of the definition data which is updated when an reference is resolved
+     *
+     * @var array
+     */
     protected $definitions = [];
+    /**
+     * Flag that tracks if there are still unresolved references
+     *
+     * @var bool
+     */
     protected $incomplete = true;
 
+    /**
+     * Resolve references in the definitions until all references are resolved
+     * Repeated until nothing flagged the definition as incomplete
+     *
+     * @param array $definition
+     * @param string $currentFile
+     * @return array
+     */
     public function resolveAllReferences(array $definition, string $currentFile) : array
     {
         while ($this->incomplete) {
@@ -21,6 +42,13 @@ class ReferenceResolver
         return $definition;
     }
 
+    /**
+     * Resolve a single OpenApi $ref string
+     *
+     * @param string $refString
+     * @param string $currentFile
+     * @return Reference|null
+     */
     public function resolveRefString(string $refString, string $currentFile) : ?Reference
     {
         $sharpPos = strpos($refString, '#');
@@ -38,6 +66,13 @@ class ReferenceResolver
         return $this->resolveReference($file, $ref);
     }
 
+    /**
+     * Resolves a reference by file-path and in-file reference
+     *
+     * @param string $file
+     * @param null|string $ref
+     * @return Reference|null
+     */
     public function resolveReference(string $file, ?string $ref = null) : ?Reference
     {
         $definition = $this->getFileDefinition($file);
@@ -60,6 +95,13 @@ class ReferenceResolver
         return $reference;
     }
 
+    /**
+     * Internal recursive resolving method
+     *
+     * @param array $definition
+     * @param string $currentFile
+     * @return array
+     */
     protected function resolveAllReferencesRec(array $definition, string $currentFile) : array
     {
         foreach ($definition as $key => $subDef) {
@@ -83,6 +125,12 @@ class ReferenceResolver
         return $definition;
     }
 
+    /**
+     * Load definition from files that were not loaded before (or load from cache)
+     *
+     * @param string $file
+     * @return array
+     */
     protected function getFileDefinition(string $file) : array
     {
         $rawFilename = $file;
@@ -110,6 +158,12 @@ class ReferenceResolver
         return $this->definitions[$file];
     }
 
+    /**
+     * Ensures that relative references works
+     *
+     * @param string $file
+     * @return string
+     */
     protected function getCleanFilename(string $file) : string
     {
         return realpath(ltrim($file, '/'));

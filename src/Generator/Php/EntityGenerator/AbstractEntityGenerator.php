@@ -11,17 +11,52 @@ abstract class AbstractEntityGenerator implements EntityGeneratorInterface
 {
     const ABSTRACT_ENTITY_NAME = 'AbstractGeneratedEntity';
 
+    /**
+     * If true @param and @return statements will be added to the entites docblocks to give typehints
+     *
+     * @var bool
+     */
     protected $addDocblockTypes;
+    /**
+     * If true the methods will get short description texts
+     *
+     * @var bool
+     */
     protected $addDocblockDescriptions;
+    /**
+     * If true setters will return $this to allow chained calls
+     *
+     * @var bool
+     */
     protected $useFluentSetters;
+    /**
+     * If true php typehints will be used to force strict types for setters
+     *
+     * @var bool
+     */
     protected $useSetterTypeHints;
+    /**
+     * If true php typehints will be used to force strict types for getters
+     *
+     * @var bool
+     */
     protected $useGetterTypeHints;
+    /**
+     * If true the toArray() function or json serialisation will completely leave properties which are null
+     *
+     * @var bool
+     */
     protected $hideNullValues;
 
     protected $generatedEntities = [];
     protected $entities = [];
     protected $collections = [];
 
+    /**
+     * Create the generator with the given settings
+     *
+     * @param array $settings
+     */
     public function __construct(array $settings = [])
     {
         $this->addDocblockTypes = $settings['addDocblockTypes'] ?? true;
@@ -32,21 +67,35 @@ abstract class AbstractEntityGenerator implements EntityGeneratorInterface
         $this->hideNullValues = $settings['hideNullValues'] ?? true;
     }
 
+    /**
+     * @return array
+     */
     public function getGeneratedEntities() : array
     {
         return $this->generatedEntities;
     }
 
+    /**
+     * @return array
+     */
     public function getEntities() : array
     {
         return $this->entities;
     }
 
+    /**
+     * @return array
+     */
     public function getCollections() : array
     {
         return $this->collections;
     }
 
+    /**
+     * Generates the AbstractGeneratedEntity class which is extended by all GeneratedEntity classes
+     *
+     * @param string $targetNamespace
+     */
     protected function addAbstractGeneratedEntity(string $targetNamespace)
     {
         $generator = new ClassGenerator();
@@ -127,6 +176,14 @@ abstract class AbstractEntityGenerator implements EntityGeneratorInterface
         $this->generatedEntities[$generator->getName()] = "<?php\n\n" . $generator->generate();
     }
 
+    /**
+     * Created entities will be added through this method to the collection of completed entities
+     * Allows to make some settings for all generated entities
+     *
+     * @param ClassGenerator $parentGenerator
+     * @param string $name
+     * @param string $namespace
+     */
     protected function addChildEntity(ClassGenerator $parentGenerator, string $name, string $namespace)
     {
         $entityGenerator = new ClassGenerator();
@@ -136,6 +193,13 @@ abstract class AbstractEntityGenerator implements EntityGeneratorInterface
         $this->entities[$name] = "<?php\n\n" . $entityGenerator->generate();
     }
 
+    /**
+     * Created properties will be added through this method to the entities. Docblocks are added here
+     *
+     * @param ClassGenerator $generator
+     * @param PropertyPattern $property
+     * @param string $type
+     */
     protected function addProperty(ClassGenerator $generator, PropertyPattern $property, string $type)
     {
         $upperName = $property->getUpperCamelCaseName();
@@ -199,6 +263,12 @@ abstract class AbstractEntityGenerator implements EntityGeneratorInterface
         }
     }
 
+    /**
+     * Creates the body of a simple setter
+     *
+     * @param string $propertyName
+     * @return string
+     */
     protected function createSetterBody(string $propertyName)
     {
         $body = '$this->' . $propertyName . ' = $' . $propertyName . ';';
@@ -208,6 +278,12 @@ abstract class AbstractEntityGenerator implements EntityGeneratorInterface
         return $body;
     }
 
+    /**
+     * Creates the body of a simple getter
+     *
+     * @param string $propertyName
+     * @return string
+     */
     protected function createGetterBody(string $propertyName)
     {
         return 'return $this->' . $propertyName . ';';

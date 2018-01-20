@@ -2,6 +2,9 @@
 
 namespace ApiMappingLayerGen\Generator\Php;
 
+/**
+ * Map types to php types
+ */
 class TypesMapper
 {
     const TYPES_MAP = [
@@ -10,12 +13,12 @@ class TypesMapper
         'boolean' => 'bool'
     ];
 
+    /**
+     * @param string $type
+     * @return mixed|string
+     */
     public static function mapType(string $type)
     {
-        if (isset(self::TYPES_MAP[$type])) {
-            return self::TYPES_MAP[$type];
-        } else {
-            return $type;
-        }
+        return self::TYPES_MAP[$type] ?? $type;
     }
 }

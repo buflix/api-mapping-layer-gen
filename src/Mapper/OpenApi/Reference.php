@@ -2,6 +2,9 @@
 
 namespace ApiMappingLayerGen\Mapper\OpenApi;
 
+/**
+ * Container class that represents an OpenApi $ref
+ */
 class Reference
 {
     protected $refKey;
@@ -35,7 +38,7 @@ class Reference
     /**
      * @return ?string
      */
-    public function getRefKey()
+    public function getRefKey() : ?string
     {
         return $this->refKey;
     }
@@ -43,7 +46,7 @@ class Reference
     /**
      * @return ?string
      */
-    public function getRefFile()
+    public function getRefFile() : ?string
     {
         return $this->refFile;
     }

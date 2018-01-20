@@ -10,10 +10,25 @@ use ApiMappingLayerGen\Mapper\Pattern\PropertyPattern;
 use Zend\Code\Generator\ClassGenerator;
 use Zend\Code\Generator\MethodGenerator;
 
+/**
+ * The created entities will use native php arrays instead of collections.
+ *
+ * Collections can give your entities a clear defined structure and can be extended with extra features which could help
+ *  you to have a clean code structure.
+ * But collections will also have some overhead rising with the size of your data.
+ *
+ * All this won't be the case with this generator. You will get entities with arrays instead of collection classes.
+ * To have this working recursive the code is generated recursive. If there are highly encapsulated array structures
+ *  this could lead to massive code.
+ */
 class Native extends AbstractEntityGenerator implements EntityGeneratorInterface
 {
     protected $entitiesNamespace;
 
+    /**
+     * @param array $patterns
+     * @param string $targetNamespace
+     */
     public function processPatterns(array $patterns, string $targetNamespace)
     {
         $this->entitiesNamespace = $targetNamespace . '\\' . self::NAMESPACE_ENTITIES;
@@ -48,6 +63,12 @@ class Native extends AbstractEntityGenerator implements EntityGeneratorInterface
         }
     }
 
+    /**
+     * Create a method that populates the entity
+     *
+     * @param array $properties
+     * @return MethodGenerator
+     */
     protected function createPopulate(array $properties) : MethodGenerator
     {
         $generator = new MethodGenerator();
@@ -77,6 +98,12 @@ class Native extends AbstractEntityGenerator implements EntityGeneratorInterface
         return $generator;
     }
 
+    /**
+     * Creates the body of the populate method
+     *
+     * @param array $properties
+     * @return string
+     */
     protected function createPopulateBody(array $properties) : string
     {
         $populations = [];
@@ -88,6 +115,12 @@ class Native extends AbstractEntityGenerator implements EntityGeneratorInterface
         return implode("\n\n", $populations);
     }
 
+    /**
+     * Creates the code to populate one property of the entity
+     *
+     * @param PropertyPattern $pattern
+     * @return string
+     */
     protected function createPopulationCall(PropertyPattern $pattern, int $variablesSuffix = 1)
     {
         $value = $this->createPopulationCallValue($pattern);
@@ -114,6 +147,12 @@ class Native extends AbstractEntityGenerator implements EntityGeneratorInterface
         }
     }
 
+    /**
+     * Get the pattern type of the innermost pattern
+     *
+     * @param PropertyPattern $pattern
+     * @return PropertyPattern|null
+     */
     protected function getInnerPattern(PropertyPattern $pattern)
     {
         while($pattern instanceof ArrayPattern || $pattern instanceof AssocPattern) {
@@ -122,6 +161,12 @@ class Native extends AbstractEntityGenerator implements EntityGeneratorInterface
         return $pattern;
     }
 
+    /**
+     * Creates the code that produces the value that will be set to a property on population
+     *
+     * @param PropertyPattern $pattern
+     * @return string
+     */
     protected function createPopulationCallValue(PropertyPattern $pattern) : string
     {
         if ($pattern instanceof ArrayPattern || $pattern instanceof AssocPattern) {
@@ -134,6 +179,12 @@ class Native extends AbstractEntityGenerator implements EntityGeneratorInterface
         }
     }
 
+    /**
+     * Creates the toArray() method
+     *
+     * @param array $properties
+     * @return MethodGenerator
+     */
     protected function createToArray(array $properties) : MethodGenerator
     {
         $generator = new MethodGenerator();
@@ -158,6 +209,12 @@ class Native extends AbstractEntityGenerator implements EntityGeneratorInterface
         return $generator;
     }
 
+    /**
+     * Creates the body of the toArray() method
+     *
+     * @param array $properties
+     * @return string
+     */
     protected function createToArrayBody(array $properties) : string
     {
         $preparationCalls = '';
@@ -195,6 +252,12 @@ class Native extends AbstractEntityGenerator implements EntityGeneratorInterface
         }
     }
 
+    /**
+     * Creates the value of one property when calling toArray()
+     *
+     * @param PropertyPattern $pattern
+     * @return string
+     */
     protected function createToArrayCall(PropertyPattern $pattern)
     {
         if ($pattern instanceof ArrayPattern || $pattern instanceof AssocPattern) {
@@ -206,6 +269,18 @@ class Native extends AbstractEntityGenerator implements EntityGeneratorInterface
         }
     }
 
+    /**
+     * To have a working toArray() method which works without a recursive collection we need to foreach the exact number
+     *  of levels. This needs to work recursive!
+     *
+     * @param PropertyPattern $pattern
+     * @param string $loopArray
+     * @param string $inLoopBeforeValue
+     * @param string $inLoopBehindValue
+     * @param bool $setResult
+     * @param int $variablesSuffix
+     * @return string
+     */
     protected function createRecursiveArrayLoop(
         PropertyPattern $pattern,
         string $loopArray,

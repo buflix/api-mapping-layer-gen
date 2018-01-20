@@ -29,11 +29,17 @@ class EntityPattern extends PropertyPattern
         return $this->className;
     }
 
+    /**
+     * @param PropertyPattern $property
+     */
     public function addProperty(PropertyPattern $property)
     {
         $this->properties[] = $property;
     }
 
+    /**
+     * @return array
+     */
     public function getProperties() : array
     {
         return $this->properties;

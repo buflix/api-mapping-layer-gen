@@ -2,8 +2,17 @@
 
 namespace ApiMappingLayerGen\Mapper\OpenApi;
 
+/**
+ * Class to handle the OpenApi 'allOf' keyword
+ */
 class AllOfResolver
 {
+    /**
+     * Resolve all 'allOf' occurences and merge them as expected by OpenApi
+     *
+     * @param array $definition
+     * @return array
+     */
     public function resolveKeywordAllOf(array $definition)
     {
         foreach ($definition as $key => $subDef) {

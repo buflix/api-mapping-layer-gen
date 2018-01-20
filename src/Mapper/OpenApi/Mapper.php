@@ -8,13 +8,22 @@ use ApiMappingLayerGen\Mapper\Pattern\AssocPattern;
 use ApiMappingLayerGen\Mapper\Pattern\EntityPattern;
 use ApiMappingLayerGen\Mapper\Pattern\PropertyPattern;
 
+/**
+ * Class to map definition file to definition or pattern objects
+ * These created definition or patterns will be needed by the generators
+ */
 class Mapper implements MapperInterface
 {
     protected $definitionFile;
     protected $referenceResolver;
     protected $allOfResolver;
     protected $patterns = [];
+    protected $definition = [];
 
+    /**
+     * @param string $definitionFile
+     * @throws \Exception
+     */
     public function __construct(string $definitionFile)
     {
         $this->definitionFile = $definitionFile;
@@ -23,38 +32,60 @@ class Mapper implements MapperInterface
         $this->process();
     }
 
+    /**
+     * @return array
+     */
     public function getPatterns() : array
     {
         return $this->patterns;
     }
 
+    /**
+     * @return array
+     */
+    public function getDefinition() : array
+    {
+        return $this->definition;
+    }
+
+    /**
+     * @throws \Exception
+     */
     protected function process()
     {
         $baseDefinition = $this->referenceResolver->resolveReference($this->definitionFile);
-        $baseDefinitions = $baseDefinition->getValue();
-        $baseDefinitions = $this->referenceResolver->resolveAllReferences(
-            $baseDefinitions,
+        $baseDefinition = $baseDefinition->getValue();
+        $baseDefinition = $this->referenceResolver->resolveAllReferences(
+            $baseDefinition,
             $this->definitionFile
         );
-        $baseDefinitions = $this->allOfResolver->resolveKeywordAllOf($baseDefinitions);
+        $this->definition = $this->allOfResolver->resolveKeywordAllOf($baseDefinition);
 
         $models = null;
-        if (isset($baseDefinitions['swagger']) && version_compare($baseDefinitions['swagger'], '3.0') < 0) {
-            if (!isset($baseDefinitions['definitions'])) {
+        if (isset($this->definition['swagger']) && version_compare($this->definition['swagger'], '3.0') < 0) {
+            if (!isset($this->definition['definitions'])) {
                 throw new \Exception('Your definition file has no definitions!');
             }
-            $models = $baseDefinitions['definitions'];
-        } elseif (isset($baseDefinitions['openapi']) && version_compare($baseDefinitions['openapi'], '3.0') >= 0) {
-            if (!isset($baseDefinitions['components']) || !isset($baseDefinitions['components']['schemas'])) {
+            $models = $this->definition['definitions'];
+        } elseif (isset($this->definition['openapi']) && version_compare($this->definition['openapi'], '3.0') >= 0) {
+            if (!isset($this->definition['components']) || !isset($this->definition['components']['schemas'])) {
                 throw new \Exception('Your definition file has no components -> schemas!');
             }
-            $models = $baseDefinitions['components']['schemas'];
+            $models = $this->definition['components']['schemas'];
         }
         foreach ($models as $name => $definition) {
             $this->patterns[] = $this->createDefinitionPattern($name, $definition, true);
         }
     }
 
+    /**
+     * Maps OpenApi model to pattern object
+     *
+     * @param string $name
+     * @param array $definition
+     * @param bool $isEntity
+     * @return ArrayPattern|AssocPattern|EntityPattern|PropertyPattern
+     */
     protected function createDefinitionPattern(string $name, array $definition, bool $isEntity)
     {
         if ($definition['type'] === 'object') {

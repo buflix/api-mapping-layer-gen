@@ -2,6 +2,14 @@
     "name": "cyberrebell/api-mapping-layer-gen",
     "description": "The library to generate the mapping layer for your API",
     "type": "library",
+    "keywords": [
+        "php",
+        "api",
+        "mapping",
+        "openapi",
+        "swagger",
+        "json-schema"
+    ],
     "license": "MIT",
     "require": {
         "php": ">=7.1",
