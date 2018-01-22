@@ -34,19 +34,17 @@ class JsonSchemaGenerator
         $schemaContainers = [];
 
         foreach ($pathDefinition as $httpMethod => $requestDefinition) {
-            $tag = $requestDefinition['tags'][0] ?? 'default';
-
             $schemaContainers = $this->processBody(
                 $schemaContainers,
                 $requestDefinition['requestBody']['content'] ?? [],
-                $tag . '/' . $resourceName . '/' . $httpMethod . '/request'
+                $resourceName . '/' . $httpMethod . '/request'
             );
 
             foreach ($requestDefinition['responses'] ?? [] as $responseCode => $contentDefinition) {
                 $schemaContainers = $this->processBody(
                     $schemaContainers,
                     $contentDefinition['content'] ?? [],
-                    $tag . '/' . $resourceName . '/' . $httpMethod . '/response/' . $responseCode
+                    $resourceName . '/' . $httpMethod . '/response/' . $responseCode
                 );
             }
         }
@@ -159,8 +157,8 @@ class JsonSchemaGenerator
                 break;
         }
 
-        $schema = $this->addExamples($schema, $definition);
         $schema = $this->addDescription($schema, $definition);
+        $schema = $this->addExamples($schema, $definition);
         return $schema;
     }
 
@@ -205,6 +203,9 @@ class JsonSchemaGenerator
         $schema = [
             'type' => $definition['type']
         ];
+        $schema = $this->addEnum($schema, $definition);
+        $schema = $this->addLengthMinMax($schema, $definition);
+        $schema = $this->addPattern($schema, $definition);
 
         return $schema;
     }
@@ -218,6 +219,8 @@ class JsonSchemaGenerator
         $schema = [
             'type' => $definition['type']
         ];
+        $schema = $this->addEnum($schema, $definition);
+        $schema = $this->addMinMax($schema, $definition);
 
         return $schema;
     }
@@ -231,6 +234,8 @@ class JsonSchemaGenerator
         $schema = [
             'type' => $definition['type']
         ];
+        $schema = $this->addEnum($schema, $definition);
+        $schema = $this->addMinMax($schema, $definition);
 
         return $schema;
     }
@@ -249,7 +254,7 @@ class JsonSchemaGenerator
     }
 
     /**
-     * Adds the description to the schema if given in the definition
+     * Adds the description to the schema if is set in the definition
      * returns the updated schema
      *
      * @param array $schema
@@ -265,7 +270,7 @@ class JsonSchemaGenerator
     }
 
     /**
-     * Adds examples to the schema if examples are in the definition
+     * Adds examples to the schema if they are set in the definition
      * returns the updated schema
      *
      * @param array $schema
@@ -277,6 +282,76 @@ class JsonSchemaGenerator
         if (isset($definition['example'])) {
             //OpenApi single example case
             $schema['examples'] = [$definition['example']];
+        }
+        return $schema;
+    }
+
+    /**
+     * Adds enum to the schema if it is set in the definition
+     * returns the updated schema
+     *
+     * @param array $schema
+     * @param array $definition
+     * @return array
+     */
+    protected function addEnum(array $schema, array $definition) : array
+    {
+        if (isset($definition['enum'])) {
+            $schema['enum'] = $definition['enum'];
+        }
+        return $schema;
+    }
+
+    /**
+     * Adds minimum and maximum to the schema if it is set in the definition
+     * returns the updated schema
+     *
+     * @param array $schema
+     * @param array $definition
+     * @return array
+     */
+    protected function addMinMax(array $schema, array $definition) : array
+    {
+        if (isset($definition['minimum'])) {
+            $schema['minimum'] = $definition['minimum'];
+        }
+        if (isset($definition['maximum'])) {
+            $schema['maximum'] = $definition['maximum'];
+        }
+        return $schema;
+    }
+
+    /**
+     * Adds minLength and maxLength to the schema if it is set in the definition
+     * returns the updated schema
+     *
+     * @param array $schema
+     * @param array $definition
+     * @return array
+     */
+    protected function addLengthMinMax(array $schema, array $definition) : array
+    {
+        if (isset($definition['minLength'])) {
+            $schema['minLength'] = $definition['minLength'];
+        }
+        if (isset($definition['maxLength'])) {
+            $schema['maxLength'] = $definition['maxLength'];
+        }
+        return $schema;
+    }
+
+    /**
+     * Adds pattern to the schema if it is set in the definition
+     * returns the updated schema
+     *
+     * @param array $schema
+     * @param array $definition
+     * @return array
+     */
+    protected function addPattern(array $schema, array $definition) : array
+    {
+        if (isset($definition['pattern'])) {
+            $schema['pattern'] = $definition['pattern'];
         }
         return $schema;
     }
