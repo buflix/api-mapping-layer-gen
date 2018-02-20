@@ -170,6 +170,8 @@ class JsonSchemaGenerator
     {
         $schema = [
             'type' => $definition['type'],
+            'description' => $definition['description'] ?? '',
+            'required' => $definition['required'] ?? [],
             'properties' => []
         ];
         $properties = $definition['properties'] ?? [];
